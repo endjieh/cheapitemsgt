@@ -17,22 +17,17 @@ function cleanDiscordMessage(raw) {
   if (!raw) return '';
   let text = raw;
   // HANYA ubah emoji yang benar-benar mewakili WL / DL / BGL
-  // Contoh: <:WL:123456>, <:DL:123456>, <:BGL:123456>
   text = text.replace(/<:([a-zA-Z0-9_]+):\d+>/gi, (m, name) => {
     const n = name.toUpperCase();
     if (n === 'BGL' || n === 'BLUEGEM' || n === 'BLUE_GEM') return ' BGL ';
     if (n === 'DL' || n === 'DIAMOND' || n === 'DIAMONDLOCK' || n === 'DIAMOND_LOCK') return ' DL ';
     if (n === 'WL' || n === 'WORLDLOCK' || n === 'WORLD_LOCK') return ' WL ';
-    return ' '; // Emoji lain (gambar item, verified, centang, dll.) dibuang jadi spasi
+    return ' ';
   });
-  // Bersihkan markdown formatting (*, _, ~, `)
   text = text.replace(/[*_~`]/g, '');
   return text;
 }
 
-/**
- * Deteksi apakah baris ini adalah postingan BELI (B>, Buy, Buying, WTB, Beli, LF, Looking For, Sell to me)
- */
 function isBuyLine(line) {
   return (
     /(?:\bb[>:\/]\s*|\b(?:buy|buying|wtb|beli|lf|looking\s*for)\b)/i.test(line) ||
@@ -40,55 +35,84 @@ function isBuyLine(line) {
   );
 }
 
-/**
- * Deteksi apakah baris ini adalah postingan JUAL (S>, Sell, Selling, WTS, Jual, For Sale)
- */
 function isSellLine(line) {
   return /(?:\bs[>:\/]\s*|\b(?:sell|selling|wts|jual|for\s*sale)\b)/i.test(line);
 }
 
+function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
- * Ekstrak harga dari baris teks
- * KETAT: Harus ada ANGKA DAN SATUAN (WL / DL / BGL)!
- * Kata seperti 'w/' (with), nama world 'DLMART', jumlah pcs, dll. TIDAK AKAN dihitung harga!
+ * Ekstrak harga yang berada TEPAT DI SEKITAR nama item (bukan harga item lain)
  */
-function extractLinePrice(line) {
-  const text = line.toLowerCase();
+function extractItemSpecificPrice(text, matchedKeyword) {
+  const lower = text.toLowerCase();
+  const kw = matchedKeyword.toLowerCase();
+  const kwIndex = lower.indexOf(kw);
+
+  if (kwIndex === -1) return { hasPrice: false };
+
+  // Ambil teks tepat setelah nama item (contoh: 'Eldritch Flame 10wl' atau 'Eldritch Flame : 10wl')
+  const afterText = lower.slice(kwIndex + kw.length, kwIndex + kw.length + 50);
+
+  // Ambil teks tepat sebelum nama item (contoh: '10wl Eldritch Flame')
+  const beforeText = lower.slice(Math.max(0, kwIndex - 40), kwIndex);
 
   let totalWls = 0;
   let hasPrice = false;
   let formatted = [];
 
-  // 1. Cek BGL (contoh: '2 bgl', '1.5 bgl', '1 blue gem')
-  const bglMatch = text.match(/\b(\d+(?:[.,]\d+)?)\s*(?:bgl|blue\s*gems?)\b/i);
-  if (bglMatch) {
-    const bglVal = parseFloat(bglMatch[1].replace(',', '.'));
-    if (!isNaN(bglVal) && bglVal > 0) {
-      totalWls += bglVal * WL_PER_BGL;
-      formatted.push(`${bglVal} BGL`);
-      hasPrice = true;
-    }
+  // Kombinasi DL dan WL misal: 4dl 50wl
+  const comboDlWl = afterText.match(/^[^a-zA-Z0-9]*\b(\d+(?:[.,]\d+)?)\s*(?:dl|diamonds?|dls)\s*(\d+(?:[.,]\d+)?)\s*(?:wl|world\s*locks?|wls)\b/i);
+
+  const afterBgl = afterText.match(/^[^a-zA-Z0-9]*\b(\d+(?:[.,]\d+)?)\s*(?:bgl|blue\s*gems?)\b/i);
+  const afterDl = afterText.match(/^[^a-zA-Z0-9]*\b(\d+(?:[.,]\d+)?)\s*(?:dl|diamonds?|dls)\b/i);
+  const afterWl = afterText.match(/^[^a-zA-Z0-9]*\b(\d+(?:[.,]\d+)?)\s*(?:wl|world\s*locks?|wls)\b/i);
+
+  if (comboDlWl) {
+    const dlVal = parseFloat(comboDlWl[1].replace(',', '.'));
+    const wlVal = parseFloat(comboDlWl[2].replace(',', '.'));
+    totalWls = (dlVal * WL_PER_DL) + wlVal;
+    formatted.push(`${dlVal} DL ${wlVal} WL`);
+    hasPrice = true;
+  } else if (afterBgl) {
+    const val = parseFloat(afterBgl[1].replace(',', '.'));
+    totalWls = val * WL_PER_BGL;
+    formatted.push(`${val} BGL`);
+    hasPrice = true;
+  } else if (afterDl) {
+    const val = parseFloat(afterDl[1].replace(',', '.'));
+    totalWls = val * WL_PER_DL;
+    formatted.push(`${val} DL`);
+    hasPrice = true;
+  } else if (afterWl) {
+    const val = parseFloat(afterWl[1].replace(',', '.'));
+    totalWls = val;
+    formatted.push(`${val} WL`);
+    hasPrice = true;
   }
 
-  // 2. Cek DL (contoh: '2 dl', '1.8 dl', '2 dls', '2 diamond locks')
-  const dlMatch = text.match(/\b(\d+(?:[.,]\d+)?)\s*(?:dl|diamonds?|dls)\b/i);
-  if (dlMatch) {
-    const dlVal = parseFloat(dlMatch[1].replace(',', '.'));
-    if (!isNaN(dlVal) && dlVal > 0) {
-      totalWls += dlVal * WL_PER_DL;
-      formatted.push(`${dlVal} DL`);
-      hasPrice = true;
-    }
-  }
+  // Jika tidak ditemukan di afterText, periksa beforeText
+  if (!hasPrice) {
+    const beforeBgl = beforeText.match(/\b(\d+(?:[.,]\d+)?)\s*(?:bgl|blue\s*gems?)\s*[^a-zA-Z0-9]*$/i);
+    const beforeDl = beforeText.match(/\b(\d+(?:[.,]\d+)?)\s*(?:dl|diamonds?|dls)\s*[^a-zA-Z0-9]*$/i);
+    const beforeWl = beforeText.match(/\b(\d+(?:[.,]\d+)?)\s*(?:wl|world\s*locks?|wls)\s*[^a-zA-Z0-9]*$/i);
 
-  // 3. Cek WL (contoh: '15 wl', '15 wls', '15 world lock')
-  // CATATAN PENTING: Jangan masukkan '\bw\b' agar kata 'w/' (with) tidak disalahartikan sebagai WL!
-  const wlMatch = text.match(/\b(\d+(?:[.,]\d+)?)\s*(?:wl|world\s*locks?|wls)\b/i);
-  if (wlMatch) {
-    const wlVal = parseFloat(wlMatch[1].replace(',', '.'));
-    if (!isNaN(wlVal) && wlVal > 0) {
-      totalWls += wlVal;
-      formatted.push(`${wlVal} WL`);
+    if (beforeBgl) {
+      const val = parseFloat(beforeBgl[1].replace(',', '.'));
+      totalWls = val * WL_PER_BGL;
+      formatted.push(`${val} BGL`);
+      hasPrice = true;
+    } else if (beforeDl) {
+      const val = parseFloat(beforeDl[1].replace(',', '.'));
+      totalWls = val * WL_PER_DL;
+      formatted.push(`${val} DL`);
+      hasPrice = true;
+    } else if (beforeWl) {
+      const val = parseFloat(beforeWl[1].replace(',', '.'));
+      totalWls = val;
+      formatted.push(`${val} WL`);
       hasPrice = true;
     }
   }
@@ -100,95 +124,66 @@ function extractLinePrice(line) {
   };
 }
 
-function escapeRegex(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * Cek apakah teks baris memuat keyword dengan boundary kata (bukan bagian dari kata lain)
- */
-function lineContainsKeyword(line, keyword) {
-  const regex = new RegExp(`(?:^|[^a-zA-Z0-9])${escapeRegex(keyword)}(?:$|[^a-zA-Z0-9])`, 'i');
-  return regex.test(line);
-}
-
 /**
  * Evaluasi pesan chat terhadap watchlist item trading user
  * KETAT:
  * 1. HANYA MENERIMA PENJUALAN (SELL / S> / WTS / JUAL)!
  * 2. TOLAK 100% ORANG YANG INGIN BELI (BUY / B> / WTB / BELI)!
- * 3. HANYA KIRIM JIKA ADA ANGKA & SATUAN (WL / DL / BGL) DAN HARGA <= BATAS MAKSIMAL USER!
- * 4. JIKA TIDAK ADA ANGKA ATAU TIDAK ADA WL -> TOLAK 100%!
+ * 3. HANYA AMBIL HARGA YANG BERADA PERSIS DI DEKAT NAMA ITEM TARGET!
+ * 4. MENDUKUNG DAFTAR BARANG YANG DIPISAH SLASH '/', '|', '•', ';', ATAU BARIS BARU!
  */
 function evaluateTradeMessage(rawMessage, watchlist) {
   const cleaned = cleanDiscordMessage(rawMessage);
-  const lines = cleaned.split('\n');
+  
+  // Pecah teks berdasarkan baris DAN pembatas daftar barang (/, |, •, ;)
+  // Contoh: 'item1 10wl / item2 20wl' akan dipecah menjadi segmen terpisah
+  const segments = cleaned.split(/[\n/|•;]+/);
 
-  // Cek apakah ada indikasi sell di dalam pesan
-  const hasAnySell = lines.some(l => isSellLine(l));
+  const hasAnySell = segments.some(s => isSellLine(s)) || isSellLine(cleaned);
 
-  let currentSection = 'unknown'; // 'buy' | 'sell' | 'unknown'
-
-  for (const line of lines) {
-    const trimmed = line.trim();
+  for (const seg of segments) {
+    const trimmed = seg.trim();
     if (!trimmed) continue;
 
-    // Perbarui penanda section
-    if (isSellLine(trimmed)) {
-      currentSection = 'sell';
-    } else if (isBuyLine(trimmed)) {
-      currentSection = 'buy';
-    }
+    // Tolak jika segmen ini bertuliskan BUY / B>
+    if (isBuyLine(trimmed)) continue;
 
     for (const target of watchlist) {
       const itemName = target.name.toLowerCase();
       const aliases = (target.aliases || []).map(a => a.toLowerCase());
       const allKeywords = [itemName, ...aliases];
 
-      // Cek apakah baris ini memuat nama item atau aliasnya (dengan boundary kata)
-      const matchedKw = allKeywords.find(k => lineContainsKeyword(trimmed, k));
+      const matchedKw = allKeywords.find(k => {
+        const regex = new RegExp(`(?:^|[^a-zA-Z0-9])${escapeRegex(k)}(?:$|[^a-zA-Z0-9])`, 'i');
+        return regex.test(trimmed);
+      });
 
       if (matchedKw) {
-        // FILTER 1: TOLAK JIKA BARIS INI ADA INDIKASI BELI (B>, BUY, WTB, BELI, LF, dll.)
-        if (isBuyLine(trimmed)) {
-          continue; // SKIP! Orang ini ingin beli!
+        // Cek indikasi jual
+        if (!isSellLine(trimmed) && !hasAnySell) {
+          continue;
         }
 
-        // FILTER 2: TOLAK JIKA BERADA DI BAWAH KATEGORI / SECTION BUY
-        if (currentSection === 'buy' && !isSellLine(trimmed)) {
-          continue; // SKIP! Masih dalam daftar beli!
-        }
-
-        // FILTER 3: HARUS ADA INDIKASI JUAL (SELL / S> / WTS / JUAL)
-        const lineIsSell = isSellLine(trimmed);
-        const sectionIsSell = currentSection === 'sell';
-
-        if (!lineIsSell && !sectionIsSell && !hasAnySell) {
-          continue; // SKIP! Bukan postingan jual!
-        }
-
-        // FILTER 4: EKSTRAK HARGA DARI BARIS ITEM INI
-        // KETAT: HARUS ADA ANGKA DAN SATUAN (WL / DL / BGL)!
-        const price = extractLinePrice(trimmed);
+        // Ekstrak harga KHUSUS untuk item ini di dalam segmennya!
+        const price = extractItemSpecificPrice(trimmed, matchedKw);
 
         if (!price.hasPrice) {
-          // TIDAK ADA ANGKA / TIDAK ADA WL DI BARIS INI -> TOLAK 100%!
+          // Tidak ada harga spesifik untuk item ini -> TOLAK!
           continue;
         }
 
         const maxWlsAllowed = priceToWls(target.maxBgl || 0, target.maxDl || 0, target.maxWl || 0);
 
-        // FILTER 5: HARGA HARUS <= BATAS MAKSIMAL TARGET USER
         if (price.totalWls <= maxWlsAllowed) {
           return {
             targetItem: target.name,
             detectedPrice: price.formatted,
             maxAllowed: `${target.maxBgl || 0} BGL ${target.maxDl || 0} DL ${target.maxWl || 0} WL`.replace(/^0 BGL | 0 WL$/g, '').trim(),
             dealReason: `🔥 HARGA MASUK TARGET! (${price.formatted} <= Target)`,
-            lineMatched: trimmed
+            matchedSegment: trimmed
           };
         } else {
-          // Kemahalan (misal: Malevolent Hair 350 WL padahal batas 180 WL), tolak!
+          // Kemahalan (contoh: Eldritch Flame 10wl padahal target <= 3wl) -> TOLAK!
           continue;
         }
       }
@@ -201,7 +196,7 @@ function evaluateTradeMessage(rawMessage, watchlist) {
 module.exports = {
   priceToWls,
   cleanDiscordMessage,
-  extractLinePrice,
+  extractItemSpecificPrice,
   isBuyLine,
   isSellLine,
   evaluateTradeMessage
