@@ -100,6 +100,18 @@ function extractLinePrice(line) {
   };
 }
 
+function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Cek apakah teks baris memuat keyword dengan boundary kata (bukan bagian dari kata lain)
+ */
+function lineContainsKeyword(line, keyword) {
+  const regex = new RegExp(`(?:^|[^a-zA-Z0-9])${escapeRegex(keyword)}(?:$|[^a-zA-Z0-9])`, 'i');
+  return regex.test(line);
+}
+
 /**
  * Evaluasi pesan chat terhadap watchlist item trading user
  * KETAT:
@@ -132,9 +144,9 @@ function evaluateTradeMessage(rawMessage, watchlist) {
       const itemName = target.name.toLowerCase();
       const aliases = (target.aliases || []).map(a => a.toLowerCase());
       const allKeywords = [itemName, ...aliases];
-      const lowerLine = trimmed.toLowerCase();
 
-      const matchedKw = allKeywords.find(k => lowerLine.includes(k));
+      // Cek apakah baris ini memuat nama item atau aliasnya (dengan boundary kata)
+      const matchedKw = allKeywords.find(k => lineContainsKeyword(trimmed, k));
 
       if (matchedKw) {
         // FILTER 1: TOLAK JIKA BARIS INI ADA INDIKASI BELI (B>, BUY, WTB, BELI, LF, dll.)
@@ -155,13 +167,12 @@ function evaluateTradeMessage(rawMessage, watchlist) {
           continue; // SKIP! Bukan postingan jual!
         }
 
-        // FILTER 4: EKSTRAK HARGA
+        // FILTER 4: EKSTRAK HARGA DARI BARIS ITEM INI
         // KETAT: HARUS ADA ANGKA DAN SATUAN (WL / DL / BGL)!
         const price = extractLinePrice(trimmed);
 
         if (!price.hasPrice) {
-          // TIDAK ADA ANGKA / TIDAK ADA WL -> TOLAK 100%!
-          // JANGAN PERNAH LOLOSKAN JIKA HARGA TIDAK JELAS!
+          // TIDAK ADA ANGKA / TIDAK ADA WL DI BARIS INI -> TOLAK 100%!
           continue;
         }
 
@@ -177,7 +188,7 @@ function evaluateTradeMessage(rawMessage, watchlist) {
             lineMatched: trimmed
           };
         } else {
-          // Kemahalan, abaikan!
+          // Kemahalan (misal: Malevolent Hair 350 WL padahal batas 180 WL), tolak!
           continue;
         }
       }
