@@ -30,11 +30,20 @@ function cleanDiscordMessage(raw) {
 }
 
 /**
- * Cek apakah pesan adalah postingan PENJUALAN (S>, Sell, WTS, Jual)
+ * Deteksi apakah baris ini adalah postingan BELI (B>, Buy, Buying, WTB, Beli, LF, Looking For, Sell to me)
  */
-function isSellIntent(text) {
-  const sellPattern = /(?:\bs[>:\/]\s*|\b(?:sell|selling|wts|jual|for\s*sale)\b)/i;
-  return sellPattern.test(text);
+function isBuyLine(line) {
+  return (
+    /(?:\bb[>:\/]\s*|\b(?:buy|buying|wtb|beli|lf|looking\s*for)\b)/i.test(line) ||
+    /\b(?:sell\s+(?:to\s+)?me|who\s+sell|anyone\s+sell(?:ing)?)\b/i.test(line)
+  );
+}
+
+/**
+ * Deteksi apakah baris ini adalah postingan JUAL (S>, Sell, Selling, WTS, Jual, For Sale)
+ */
+function isSellLine(line) {
+  return /(?:\bs[>:\/]\s*|\b(?:sell|selling|wts|jual|for\s*sale)\b)/i.test(line);
 }
 
 /**
@@ -89,60 +98,84 @@ function extractLinePrice(line) {
 
 /**
  * Evaluasi pesan chat terhadap watchlist item trading user
- * KETAT: Hanya kirim jika harga <= batas maksimum user!
+ * KETAT:
+ * 1. HANYA MENERIMA PENJUALAN (SELL / S> / WTS / JUAL)!
+ * 2. TOLAK 100% ORANG YANG INGIN BELI (BUY / B> / WTB / BELI)!
+ * 3. HANYA KIRIM JIKA HARGA <= BATAS MAKSIMAL USER!
  */
 function evaluateTradeMessage(rawMessage, watchlist, alertIfPriceMissing = false) {
   const cleaned = cleanDiscordMessage(rawMessage);
-
-  if (!isSellIntent(cleaned)) {
-    return null;
-  }
-
   const lines = cleaned.split('\n');
 
-  for (const target of watchlist) {
-    const itemName = target.name.toLowerCase();
-    const aliases = (target.aliases || []).map(a => a.toLowerCase());
-    const allKeywords = [itemName, ...aliases];
+  // Cek apakah ada indikasi sell di dalam pesan
+  const hasAnySell = lines.some(l => isSellLine(l));
 
-    const maxWlsAllowed = priceToWls(target.maxBgl || 0, target.maxDl || 0, target.maxWl || 0);
+  let currentSection = 'unknown'; // 'buy' | 'sell' | 'unknown'
 
-    // Cari di setiap baris yang memuat nama item
-    for (const line of lines) {
-      const lowerLine = line.toLowerCase();
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Perbarui penanda section
+    if (isSellLine(trimmed)) {
+      currentSection = 'sell';
+    } else if (isBuyLine(trimmed)) {
+      currentSection = 'buy';
+    }
+
+    for (const target of watchlist) {
+      const itemName = target.name.toLowerCase();
+      const aliases = (target.aliases || []).map(a => a.toLowerCase());
+      const allKeywords = [itemName, ...aliases];
+      const lowerLine = trimmed.toLowerCase();
+
       const matchedKw = allKeywords.find(k => lowerLine.includes(k));
 
       if (matchedKw) {
-        // Ekstrak harga dari baris yang bersangkutan (agar tidak tercampur dengan harga item lain di list)
-        let price = extractLinePrice(line);
-
-        // Jika baris tersebut tidak memuat harga, coba ekstrak dari seluruh pesan
-        if (!price.hasPrice) {
-          price = extractLinePrice(cleaned);
+        // FILTER 1: TOLAK JIKA BARIS INI ADA INDIKASI BELI (B>, BUY, WTB, BELI, LF, dll.)
+        if (isBuyLine(trimmed)) {
+          continue; // SKIP! Orang ini ingin beli!
         }
 
+        // FILTER 2: TOLAK JIKA BERADA DI BAWAH KATEGORI / SECTION BUY
+        if (currentSection === 'buy' && !isSellLine(trimmed)) {
+          continue; // SKIP! Masih dalam daftar beli!
+        }
+
+        // FILTER 3: HARUS ADA INDIKASI JUAL (SELL / S> / WTS / JUAL)
+        const lineIsSell = isSellLine(trimmed);
+        const sectionIsSell = currentSection === 'sell';
+
+        if (!lineIsSell && !sectionIsSell && !hasAnySell) {
+          continue; // SKIP! Bukan postingan jual!
+        }
+
+        // FILTER 4: EKSTRAK HARGA
+        const price = extractLinePrice(trimmed);
+
         if (price.hasPrice) {
-          // KETAT: Hanya kirim jika harga <= batas maksimum user!
+          const maxWlsAllowed = priceToWls(target.maxBgl || 0, target.maxDl || 0, target.maxWl || 0);
+
+          // FILTER 5: HARGA HARUS <= BATAS MAKSIMAL TARGET USER
           if (price.totalWls <= maxWlsAllowed) {
             return {
               targetItem: target.name,
               detectedPrice: price.formatted,
               maxAllowed: `${target.maxBgl || 0} BGL ${target.maxDl || 0} DL ${target.maxWl || 0} WL`.replace(/^0 BGL | 0 WL$/g, '').trim(),
               dealReason: `🔥 HARGA MASUK TARGET! (${price.formatted} <= Target)`,
-              lineMatched: line.trim()
+              lineMatched: trimmed
             };
           } else {
-            // Harga di atas target kita (kemahalan), abaikan!
+            // Kemahalan, abaikan!
             continue;
           }
         } else if (alertIfPriceMissing) {
-          // Hanya kirim jika opsi ini sengaja diaktifkan
           return {
             targetItem: target.name,
             detectedPrice: 'Harga belum tertera',
             maxAllowed: `${target.maxBgl || 0} BGL ${target.maxDl || 0} DL ${target.maxWl || 0} WL`.replace(/^0 BGL | 0 WL$/g, '').trim(),
             dealReason: '⚠️ Harga belum tertera di chat',
-            lineMatched: line.trim()
+            lineMatched: trimmed
           };
         }
       }
@@ -156,6 +189,7 @@ module.exports = {
   priceToWls,
   cleanDiscordMessage,
   extractLinePrice,
-  isSellIntent,
+  isBuyLine,
+  isSellLine,
   evaluateTradeMessage
 };
