@@ -16,13 +16,14 @@ function priceToWls(bgl = 0, dl = 0, wl = 0) {
 function cleanDiscordMessage(raw) {
   if (!raw) return '';
   let text = raw;
-  // Ubah custom emoji <:WL:880251447470596157> atau :WL: menjadi kata 'WL'
+  // HANYA ubah emoji yang benar-benar mewakili WL / DL / BGL
+  // Contoh: <:WL:123456>, <:DL:123456>, <:BGL:123456>
   text = text.replace(/<:([a-zA-Z0-9_]+):\d+>/gi, (m, name) => {
     const n = name.toUpperCase();
-    if (n.includes('BGL')) return ' BGL ';
-    if (n.includes('DL')) return ' DL ';
-    if (n.includes('WL')) return ' WL ';
-    return ' ';
+    if (n === 'BGL' || n === 'BLUEGEM' || n === 'BLUE_GEM') return ' BGL ';
+    if (n === 'DL' || n === 'DIAMOND' || n === 'DIAMONDLOCK' || n === 'DIAMOND_LOCK') return ' DL ';
+    if (n === 'WL' || n === 'WORLDLOCK' || n === 'WORLD_LOCK') return ' WL ';
+    return ' '; // Emoji lain (gambar item, verified, centang, dll.) dibuang jadi spasi
   });
   // Bersihkan markdown formatting (*, _, ~, `)
   text = text.replace(/[*_~`]/g, '');
@@ -48,6 +49,8 @@ function isSellLine(line) {
 
 /**
  * Ekstrak harga dari baris teks
+ * KETAT: Harus ada ANGKA DAN SATUAN (WL / DL / BGL)!
+ * Kata seperti 'w/' (with), nama world 'DLMART', jumlah pcs, dll. TIDAK AKAN dihitung harga!
  */
 function extractLinePrice(line) {
   const text = line.toLowerCase();
@@ -56,8 +59,8 @@ function extractLinePrice(line) {
   let hasPrice = false;
   let formatted = [];
 
-  // 1. Cek BGL
-  const bglMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:bgl|blue\s*gem)/i);
+  // 1. Cek BGL (contoh: '2 bgl', '1.5 bgl', '1 blue gem')
+  const bglMatch = text.match(/\b(\d+(?:[.,]\d+)?)\s*(?:bgl|blue\s*gems?)\b/i);
   if (bglMatch) {
     const bglVal = parseFloat(bglMatch[1].replace(',', '.'));
     if (!isNaN(bglVal) && bglVal > 0) {
@@ -67,8 +70,8 @@ function extractLinePrice(line) {
     }
   }
 
-  // 2. Cek DL
-  const dlMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:dl|diamond|dls)/i);
+  // 2. Cek DL (contoh: '2 dl', '1.8 dl', '2 dls', '2 diamond locks')
+  const dlMatch = text.match(/\b(\d+(?:[.,]\d+)?)\s*(?:dl|diamonds?|dls)\b/i);
   if (dlMatch) {
     const dlVal = parseFloat(dlMatch[1].replace(',', '.'));
     if (!isNaN(dlVal) && dlVal > 0) {
@@ -78,8 +81,9 @@ function extractLinePrice(line) {
     }
   }
 
-  // 3. Cek WL
-  const wlMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:wl|world\s*lock|wls|\bw\b)/i);
+  // 3. Cek WL (contoh: '15 wl', '15 wls', '15 world lock')
+  // CATATAN PENTING: Jangan masukkan '\bw\b' agar kata 'w/' (with) tidak disalahartikan sebagai WL!
+  const wlMatch = text.match(/\b(\d+(?:[.,]\d+)?)\s*(?:wl|world\s*locks?|wls)\b/i);
   if (wlMatch) {
     const wlVal = parseFloat(wlMatch[1].replace(',', '.'));
     if (!isNaN(wlVal) && wlVal > 0) {
@@ -101,9 +105,10 @@ function extractLinePrice(line) {
  * KETAT:
  * 1. HANYA MENERIMA PENJUALAN (SELL / S> / WTS / JUAL)!
  * 2. TOLAK 100% ORANG YANG INGIN BELI (BUY / B> / WTB / BELI)!
- * 3. HANYA KIRIM JIKA HARGA <= BATAS MAKSIMAL USER!
+ * 3. HANYA KIRIM JIKA ADA ANGKA & SATUAN (WL / DL / BGL) DAN HARGA <= BATAS MAKSIMAL USER!
+ * 4. JIKA TIDAK ADA ANGKA ATAU TIDAK ADA WL -> TOLAK 100%!
  */
-function evaluateTradeMessage(rawMessage, watchlist, alertIfPriceMissing = false) {
+function evaluateTradeMessage(rawMessage, watchlist) {
   const cleaned = cleanDiscordMessage(rawMessage);
   const lines = cleaned.split('\n');
 
@@ -151,32 +156,29 @@ function evaluateTradeMessage(rawMessage, watchlist, alertIfPriceMissing = false
         }
 
         // FILTER 4: EKSTRAK HARGA
+        // KETAT: HARUS ADA ANGKA DAN SATUAN (WL / DL / BGL)!
         const price = extractLinePrice(trimmed);
 
-        if (price.hasPrice) {
-          const maxWlsAllowed = priceToWls(target.maxBgl || 0, target.maxDl || 0, target.maxWl || 0);
+        if (!price.hasPrice) {
+          // TIDAK ADA ANGKA / TIDAK ADA WL -> TOLAK 100%!
+          // JANGAN PERNAH LOLOSKAN JIKA HARGA TIDAK JELAS!
+          continue;
+        }
 
-          // FILTER 5: HARGA HARUS <= BATAS MAKSIMAL TARGET USER
-          if (price.totalWls <= maxWlsAllowed) {
-            return {
-              targetItem: target.name,
-              detectedPrice: price.formatted,
-              maxAllowed: `${target.maxBgl || 0} BGL ${target.maxDl || 0} DL ${target.maxWl || 0} WL`.replace(/^0 BGL | 0 WL$/g, '').trim(),
-              dealReason: `🔥 HARGA MASUK TARGET! (${price.formatted} <= Target)`,
-              lineMatched: trimmed
-            };
-          } else {
-            // Kemahalan, abaikan!
-            continue;
-          }
-        } else if (alertIfPriceMissing) {
+        const maxWlsAllowed = priceToWls(target.maxBgl || 0, target.maxDl || 0, target.maxWl || 0);
+
+        // FILTER 5: HARGA HARUS <= BATAS MAKSIMAL TARGET USER
+        if (price.totalWls <= maxWlsAllowed) {
           return {
             targetItem: target.name,
-            detectedPrice: 'Harga belum tertera',
+            detectedPrice: price.formatted,
             maxAllowed: `${target.maxBgl || 0} BGL ${target.maxDl || 0} DL ${target.maxWl || 0} WL`.replace(/^0 BGL | 0 WL$/g, '').trim(),
-            dealReason: '⚠️ Harga belum tertera di chat',
+            dealReason: `🔥 HARGA MASUK TARGET! (${price.formatted} <= Target)`,
             lineMatched: trimmed
           };
+        } else {
+          // Kemahalan, abaikan!
+          continue;
         }
       }
     }

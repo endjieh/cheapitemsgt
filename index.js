@@ -47,22 +47,25 @@ function loadConfig() {
 
 loadConfig();
 
-// Hot-reload config & watchlist
-const watchFile = (filePath) => {
+// Hot-reload config, watchlist & parser
+const watchFile = (filePath, onReload) => {
   if (fs.existsSync(filePath)) {
     fs.watch(filePath, (eventType) => {
       if (eventType === 'change') {
         setTimeout(() => {
-          loadConfig();
+          if (onReload) onReload();
           const items = config.growtopia?.watchlist?.map(w => w.name).join(', ') || 'kosong';
-          console.log(`\n\x1b[33m[WATCHLIST DIUPDATE] Item dipantau: ${items}\x1b[0m\n`);
+          console.log(`\n\x1b[33m[UPDATE TERDETEKSI] File ${path.basename(filePath)} diperbarui otomatis!\x1b[0m\n`);
         }, 200);
       }
     });
   }
 };
-watchFile(configPath);
-watchFile(watchlistPath);
+watchFile(configPath, loadConfig);
+watchFile(watchlistPath, loadConfig);
+watchFile(path.join(__dirname, 'gt-parser.js'), () => {
+  delete require.cache[require.resolve('./gt-parser')];
+});
 
 // Validasi token
 if (!config.discord.userToken || config.discord.userToken.includes('ISI_TOKEN')) {
@@ -126,6 +129,7 @@ client.on('messageCreate', async (message) => {
   if (!fullText.trim()) return;
 
   // Evaluasi apakah pesan ini menjual item yang ada di watchlist kita dengan harga masuk akal
+  const { evaluateTradeMessage } = require('./gt-parser');
   const match = evaluateTradeMessage(fullText, config.growtopia.watchlist);
 
   if (match) {
