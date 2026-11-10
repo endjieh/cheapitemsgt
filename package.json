@@ -1,0 +1,23 @@
+{
+  "name": "connector-discord",
+  "version": "1.0.0",
+  "description": "Discord Filter & Telegram Forwarder",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "demo": "node demo.js",
+    "setup": "node setup.js",
+    "test-telegram": "node test-telegram.js"
+  },
+  "keywords": [
+    "discord",
+    "filter",
+    "telegram"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js-selfbot-v13": "^3.7.1",
+    "dotenv": "^16.4.7"
+  }
+}

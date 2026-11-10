@@ -1,0 +1,59 @@
+[
+  {
+    "name": "Apocalypse Steed",
+    "aliases": ["apocalypse steed", "apoc steed", "apoc"],
+    "maxBgl": 0,
+    "maxDl": 0,
+    "maxWl": 15
+  },
+  {
+    "name": "Demon Megalodon",
+    "aliases": ["demon megalodon", "demon mega", "dmega"],
+    "maxBgl": 0,
+    "maxDl": 0,
+    "maxWl": 15
+  },
+  {
+    "name": "Familiar Leash",
+    "aliases": ["familiar leash", "fam leash"],
+    "maxBgl": 0,
+    "maxDl": 0,
+    "maxWl": 6
+  },
+  {
+    "name": "Cursed Katana",
+    "aliases": ["cursed katana", "ckatana"],
+    "maxBgl": 0,
+    "maxDl": 2,
+    "maxWl": 0
+  },
+  {
+    "name": "Black Aura",
+    "aliases": ["black aura", "baura"],
+    "maxBgl": 0,
+    "maxDl": 5,
+    "maxWl": 0
+  },
+  {
+    "name": "Malevolent Hair",
+    "aliases": ["malevolent hair", "male hair", "malevolent"],
+    "maxBgl": 0,
+    "maxDl": 1,
+    "maxWl": 80
+  },
+  {
+    "name": "Eldritch Flame",
+    "aliases": ["eldritch flame", "eldritch"],
+    "maxBgl": 0,
+    "maxDl": 0,
+    "maxWl": 3
+  },
+  {
+    "name": "Cape Tatters",
+    "aliases": ["cape tatters", "tatters"],
+    "maxBgl": 0,
+    "maxDl": 0,
+    "maxWl": 18
+  }
+]
+
