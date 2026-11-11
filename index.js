@@ -12,8 +12,10 @@ let config = {
   discord: { userToken: process.env.DISCORD_USER_TOKEN || '' },
   telegram: { botToken: process.env.TELEGRAM_BOT_TOKEN || '', chatId: process.env.TELEGRAM_CHAT_ID || '' },
   growtopia: {
-    targetServer: process.env.TARGET_SERVER || 'nemo',
-    targetServerId: process.env.TARGET_SERVER_ID || '571992648190263317',
+    targetServerIds: process.env.TARGET_SERVER_IDS 
+      ? process.env.TARGET_SERVER_IDS.split(',').map(s => s.trim()) 
+      : ['571992648190263317', '1107067283773333614'],
+    targetServerNames: ['The Lost Nemo!', "iHemo's Legacy 🦉"],
     cooldownSeconds: parseInt(process.env.COOLDOWN_SECONDS || '3', 10),
     watchlist: []
   }
@@ -81,11 +83,21 @@ client.on('ready', () => {
   console.log('\n\x1b[32m====================================================\x1b[0m');
   console.log('🎮 \x1b[1mGROWTOPIA TRADE SNIPER BOT AKTIF!\x1b[0m');
   console.log(`👤 Akun Discord: \x1b[36m${client.user.tag}\x1b[0m`);
-  const targetGuild = config.growtopia.targetServerId 
-    ? client.guilds.cache.get(config.growtopia.targetServerId)
-    : client.guilds.cache.find(g => g.name.toLowerCase().includes((config.growtopia.targetServer || '').toLowerCase()));
-  const targetDisplay = targetGuild ? `"${targetGuild.name}" (${targetGuild.channels.cache.filter(c => c.type === 'GUILD_TEXT').size} channel)` : (config.growtopia.targetServer || 'Semua Server');
-  console.log(`🎯 Target Server: \x1b[33m${targetDisplay}\x1b[0m`);
+  // Ambil daftar server target
+  const targetIds = config.growtopia.targetServerIds || (config.growtopia.targetServerId ? [config.growtopia.targetServerId] : []);
+  const monitoredGuilds = client.guilds.cache.filter(g => {
+    if (targetIds.length > 0 && targetIds.includes(g.id)) return true;
+    if (config.growtopia.targetServerNames && config.growtopia.targetServerNames.some(name => g.name.toLowerCase().includes(name.toLowerCase()))) return true;
+    if (config.growtopia.targetServer && g.name.toLowerCase().includes(config.growtopia.targetServer.toLowerCase())) return true;
+    return false;
+  });
+
+  const totalChannels = monitoredGuilds.reduce((acc, g) => acc + g.channels.cache.filter(c => c.type === 'GUILD_TEXT').size, 0);
+  console.log(`🎯 Target Server (${monitoredGuilds.size} server, total ${totalChannels} channel):`);
+  monitoredGuilds.forEach(g => {
+    const textCount = g.channels.cache.filter(c => c.type === 'GUILD_TEXT').size;
+    console.log(`   - \x1b[33m${g.name}\x1b[0m (${textCount} channel text)`);
+  });
   console.log(`📋 Item di Watchlist: \x1b[35m${config.growtopia.watchlist.length} item\x1b[0m`);
   
   config.growtopia.watchlist.forEach((target, i) => {
@@ -106,10 +118,14 @@ client.on('messageCreate', async (message) => {
   const channelName = message.channel?.name || '';
 
   // Filter server jika ditentukan (ID atau Nama Server)
-  if (config.growtopia.targetServerId && message.guild?.id) {
-    if (message.guild.id !== config.growtopia.targetServerId) {
+  const targetIds = config.growtopia.targetServerIds || (config.growtopia.targetServerId ? [config.growtopia.targetServerId] : []);
+  if (targetIds.length > 0 && message.guild?.id) {
+    if (!targetIds.includes(message.guild.id)) {
       return;
     }
+  } else if (config.growtopia.targetServerNames && config.growtopia.targetServerNames.length > 0) {
+    const isTarget = config.growtopia.targetServerNames.some(name => serverName.toLowerCase().includes(name.toLowerCase()));
+    if (!isTarget) return;
   } else if (config.growtopia.targetServer) {
     const target = config.growtopia.targetServer.toLowerCase();
     if (!serverName.toLowerCase().includes(target)) {
@@ -186,10 +202,15 @@ process.on('unhandledRejection', (reason) => console.error('\x1b[31m[ERROR]\x1b[
 // Health-check server sederhana agar kompatibel dengan semua platform cloud (Koyeb, Render, Railway, dll.)
 const http = require('http');
 const PORT = process.env.PORT || 8080;
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('Growtopia Sniper is Running 24/7!\n');
-}).listen(PORT, () => {
+});
+server.on('error', (err) => {
+  // Abaikan jika port sudah terpakai di lokal
+  if (err.code !== 'EADDRINUSE') console.error('HTTP server error:', err.message);
+});
+server.listen(PORT, () => {
   console.log(`🌐 Health-check server aktif di port ${PORT}`);
 });
 
