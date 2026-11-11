@@ -54,6 +54,20 @@
     "maxBgl": 0,
     "maxDl": 0,
     "maxWl": 18
+  },
+  {
+    "name": "Famine Steed",
+    "aliases": ["famine steed", "famine", "faminesteed"],
+    "maxBgl": 0,
+    "maxDl": 3,
+    "maxWl": 0
+  },
+  {
+    "name": "Teeny Devil Wing",
+    "aliases": ["teeny devil wing", "teeny devil wings", "teeny devil", "teeny wing", "teeny wings"],
+    "maxBgl": 0,
+    "maxDl": 0,
+    "maxWl": 80
   }
 ]
 
