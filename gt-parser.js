@@ -163,15 +163,17 @@ function extractItemSpecificPrice(text, matchedKeyword) {
  * 2. TOLAK 100% ORANG YANG INGIN BELI (BUY / B> / WTB / BELI)!
  * 3. HANYA AMBIL HARGA YANG BERADA PERSIS DI DEKAT NAMA ITEM TARGET!
  * 4. MENDUKUNG DAFTAR BARANG YANG DIPISAH SLASH '/', '|', '•', ';', ATAU BARIS BARU!
+ * 5. MENAMPILKAN SEMUA ITEM YANG COCOK DALAM SATU PESAN (BUKAN HANYA 1)!
  */
 function evaluateTradeMessage(rawMessage, watchlist) {
   const cleaned = cleanDiscordMessage(rawMessage);
   
   // Pecah teks berdasarkan baris DAN pembatas daftar barang (/, |, •, ;)
-  // Contoh: 'item1 10wl / item2 20wl' akan dipecah menjadi segmen terpisah
   const segments = cleaned.split(/[\n/|•;]+/);
-
   const hasAnySell = segments.some(s => isSellLine(s)) || isSellLine(cleaned);
+
+  const matchedDeals = [];
+  const seenItems = new Set();
 
   for (const seg of segments) {
     const trimmed = seg.trim();
@@ -181,6 +183,9 @@ function evaluateTradeMessage(rawMessage, watchlist) {
     if (isBuyLine(trimmed)) continue;
 
     for (const target of watchlist) {
+      // Jika item ini sudah pernah tertangkap di segmen sebelumnya, lewati agar tidak dobel
+      if (seenItems.has(target.name)) continue;
+
       const itemName = target.name.toLowerCase();
       const aliases = (target.aliases || []).map(a => a.toLowerCase());
       const allKeywords = [itemName, ...aliases];
@@ -207,22 +212,20 @@ function evaluateTradeMessage(rawMessage, watchlist) {
         const maxWlsAllowed = priceToWls(target.maxBgl || 0, target.maxDl || 0, target.maxWl || 0);
 
         if (price.totalWls <= maxWlsAllowed) {
-          return {
+          seenItems.add(target.name);
+          matchedDeals.push({
             targetItem: target.name,
             detectedPrice: price.formatted,
             maxAllowed: `${target.maxBgl || 0} BGL ${target.maxDl || 0} DL ${target.maxWl || 0} WL`.replace(/^0 BGL | 0 WL$/g, '').trim(),
             dealReason: `🔥 HARGA MASUK TARGET! (${price.formatted} <= Target)`,
             matchedSegment: trimmed
-          };
-        } else {
-          // Kemahalan (contoh: Eldritch Flame 10wl padahal target <= 3wl) -> TOLAK!
-          continue;
+          });
         }
       }
     }
   }
 
-  return null;
+  return matchedDeals.length > 0 ? matchedDeals : null;
 }
 
 module.exports = {

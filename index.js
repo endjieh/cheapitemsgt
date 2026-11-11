@@ -149,9 +149,11 @@ client.on('messageCreate', async (message) => {
   const match = evaluateTradeMessage(fullText, config.growtopia.watchlist);
 
   if (match) {
+    const deals = Array.isArray(match) ? match : [match];
+
     // Anti-spam per author per item dalam jeda beberapa detik
     const cooldown = (config.growtopia.cooldownSeconds || 3) * 1000;
-    const cacheKey = `${message.author.id}_${match.targetItem}`;
+    const cacheKey = `${message.author.id}_${deals.map(d => d.targetItem).sort().join('_')}`;
     const lastAlert = recentAlerts.get(cacheKey);
     const nowMs = Date.now();
 
@@ -171,11 +173,13 @@ client.on('messageCreate', async (message) => {
     const worldName = extractWorld(fullText);
 
     // Format notifikasi ringkas khusus CMD sesuai permintaan:
-    // [nama item wl/dl]
+    // [nama item wl/dl] (SEMUA item yang masuk list ditampilkan!)
     // world: xxx
     // nama usn dc
     console.log(`\x1b[32m=================================================\x1b[0m`);
-    console.log(`\x1b[1m\x1b[33m${match.targetItem} ${match.detectedPrice}\x1b[0m`);
+    deals.forEach(d => {
+      console.log(`\x1b[1m\x1b[33m${d.targetItem} ${d.detectedPrice}\x1b[0m`);
+    });
     console.log(`world: \x1b[36m${worldName}\x1b[0m`);
     console.log(`nama usn dc: \x1b[35m${authorName}\x1b[0m`);
     console.log(`\x1b[90m[${timeStr} | ${serverName} #${channelName}]\x1b[0m`);
@@ -184,10 +188,11 @@ client.on('messageCreate', async (message) => {
     // Kirim alert realtime ke Telegram
     try {
       await sendTradeAlert(config.telegram.botToken, config.telegram.chatId, {
-        itemName: match.targetItem,
-        detectedPrice: match.detectedPrice,
-        maxAllowed: match.maxAllowed,
-        dealReason: match.dealReason,
+        items: deals,
+        itemName: deals[0].targetItem,
+        detectedPrice: deals[0].detectedPrice,
+        maxAllowed: deals[0].maxAllowed,
+        dealReason: deals[0].dealReason,
         serverName,
         channelName,
         authorName,
