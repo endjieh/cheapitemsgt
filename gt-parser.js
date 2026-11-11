@@ -44,6 +44,38 @@ function escapeRegex(string) {
 }
 
 /**
+ * Ekstrak nama world dari teks chat Growtopia (contoh: at LEOPARD, go DTJH, world MAGSTORE, etc.)
+ */
+function extractWorld(text) {
+  if (!text) return 'DM Penjual';
+  const cleaned = text.replace(/[*_~`"”„“]/g, ' ');
+
+  const patterns = [
+    /\b(?:at|go|goto|world|drop\s*world|drop|remember|lokasi)\s*[:=]?\s*([a-zA-Z0-9]{2,20})\b/i,
+    /\b(?:world)\s*[:=]?\s*([a-zA-Z0-9]{2,20})\b/i
+  ];
+
+  const ignoreWords = new Set([
+    'me', 'dm', 'fast', 'now', 'here', 'cheap', 'fixed', 'each', 'pcs',
+    'have', 'stock', 'and', 'the', 'you', 'your', 'wl', 'dl', 'bgl', 'wls',
+    'dls', 'bgls', 'sell', 'buy', 'trade', 'seed', 'item', 'items', 'nego',
+    'all', 'for', 'to', 'in', 'of', 'on', 'is', 'a', 'an', 'discord'
+  ]);
+
+  for (const pattern of patterns) {
+    const match = cleaned.match(pattern);
+    if (match && match[1]) {
+      const candidate = match[1].trim();
+      if (!ignoreWords.has(candidate.toLowerCase()) && !/^\d+$/.test(candidate)) {
+        return candidate.toUpperCase();
+      }
+    }
+  }
+
+  return 'DM Penjual';
+}
+
+/**
  * Ekstrak harga yang berada TEPAT DI SEKITAR nama item (bukan harga item lain)
  */
 function extractItemSpecificPrice(text, matchedKeyword) {
@@ -197,6 +229,7 @@ module.exports = {
   priceToWls,
   cleanDiscordMessage,
   extractItemSpecificPrice,
+  extractWorld,
   isBuyLine,
   isSellLine,
   evaluateTradeMessage

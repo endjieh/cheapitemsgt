@@ -167,13 +167,19 @@ client.on('messageCreate', async (message) => {
       ? `https://discord.com/channels/${message.guild.id}/${message.channel.id}/${message.id}`
       : `https://discord.com/channels/@me/${message.channel.id}/${message.id}`;
 
-    console.log(`\x1b[32m[${timeStr}] 💰 DEAL DITEMUKAN! [${match.targetItem.toUpperCase()}]\x1b[0m`);
-    console.log(`   🏷️  Harga   : \x1b[33m${match.detectedPrice}\x1b[0m (Target Max: ${match.maxAllowed})`);
-    console.log(`   💬 Channel : #${channelName} (${serverName})`);
-    console.log(`   👤 Penjual : ${authorName}`);
-    console.log(`   📝 Pesan   : "${fullText.replace(/\n/g, ' ').slice(0, 80)}..."`);
-    console.log(`   ⚡ Link    : ${messageUrl}`);
-    console.log('   -------------------------------------------------');
+    const { extractWorld } = require('./gt-parser');
+    const worldName = extractWorld(fullText);
+
+    // Format notifikasi ringkas khusus CMD sesuai permintaan:
+    // [nama item wl/dl]
+    // world: xxx
+    // nama usn dc
+    console.log(`\x1b[32m=================================================\x1b[0m`);
+    console.log(`\x1b[1m\x1b[33m${match.targetItem} ${match.detectedPrice}\x1b[0m`);
+    console.log(`world: \x1b[36m${worldName}\x1b[0m`);
+    console.log(`nama usn dc: \x1b[35m${authorName}\x1b[0m`);
+    console.log(`\x1b[90m[${timeStr} | ${serverName} #${channelName}]\x1b[0m`);
+    console.log(`\x1b[32m=================================================\x1b[0m\n`);
 
     // Kirim alert realtime ke Telegram
     try {

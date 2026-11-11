@@ -1,7 +1,7 @@
 /**
  * Growtopia Trade Sniper Simulator — Item list dari watchlist user
  */
-const { evaluateTradeMessage } = require('./gt-parser');
+const { evaluateTradeMessage, extractWorld } = require('./gt-parser');
 const fs = require('fs');
 const path = require('path');
 
@@ -87,14 +87,13 @@ async function run() {
 
     if (match) {
       totalAlerts++;
-      console.log(`\x1b[32m[${time}] 🚨 DEAL MURAH!\x1b[0m`);
-      console.log(`   📦 Item   : \x1b[1m${match.targetItem}\x1b[0m`);
-      console.log(`   💰 Harga  : \x1b[33m${match.detectedPrice}\x1b[0m (Max: ${match.maxAllowed})`);
-      console.log(`   📊 Status : \x1b[32m${match.dealReason}\x1b[0m`);
-      console.log(`   💬 #${ch} — 👤 ${chat.user}`);
-      console.log(`   📝 "${chat.text}"`);
-      console.log(`   📲 \x1b[36m=> KIRIM KE TELEGRAM!\x1b[0m`);
-      console.log('   -------------------------------------------------');
+      const worldName = extractWorld(chat.text);
+      console.log(`\x1b[32m=================================================\x1b[0m`);
+      console.log(`\x1b[1m\x1b[33m${match.targetItem} ${match.detectedPrice}\x1b[0m`);
+      console.log(`world: \x1b[36m${worldName}\x1b[0m`);
+      console.log(`nama usn dc: \x1b[35m${chat.user}\x1b[0m`);
+      console.log(`\x1b[90m[${time} | #${ch}]\x1b[0m`);
+      console.log(`\x1b[32m=================================================\x1b[0m\n`);
     } else {
       totalSkipped++;
       console.log(`\x1b[90m[${time}] ✗ #${ch} — ${chat.user}: "${chat.text.slice(0, 50)}..."\x1b[0m`);
