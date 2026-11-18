@@ -68,6 +68,13 @@
     "maxBgl": 0,
     "maxDl": 0,
     "maxWl": 80
+  },
+  {
+    "name": "Anime Spikey Hair",
+    "aliases": ["anime spikey hair", "spikey anime hair"],
+    "maxBgl": 0,
+    "maxDl": 1,
+    "maxWl": 80
   }
 ]
 
