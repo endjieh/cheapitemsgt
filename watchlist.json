@@ -31,8 +31,8 @@
     "name": "Black Aura",
     "aliases": ["black aura", "baura"],
     "maxBgl": 0,
-    "maxDl": 5,
-    "maxWl": 0
+    "maxDl": 4,
+    "maxWl": 50
   },
   {
     "name": "Malevolent Hair",
@@ -64,7 +64,7 @@
   },
   {
     "name": "Teeny Devil Wing",
-    "aliases": ["teeny devil wing", "teeny devil wings", "teeny devil", "teeny wing", "teeny wings"],
+    "aliases": ["teeny devil wing", "teeny devil wings", "teeny devil"],
     "maxBgl": 0,
     "maxDl": 0,
     "maxWl": 80
