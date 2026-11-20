@@ -75,6 +75,13 @@
     "maxBgl": 0,
     "maxDl": 1,
     "maxWl": 80
+  },
+  {
+    "name": "Thanksgiving Dinner Fishing Rod",
+    "aliases": ["thanksgiving dinner fishing rod", "thanksgiving dinner rod", "thanksgiving fishing rod"],
+    "maxBgl": 0,
+    "maxDl": 16,
+    "maxWl": 0
   }
 ]
 
