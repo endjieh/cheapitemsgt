@@ -32,14 +32,14 @@
     "aliases": ["black aura", "baura"],
     "maxBgl": 0,
     "maxDl": 4,
-    "maxWl": 50
+    "maxWl": 0
   },
   {
     "name": "Malevolent Hair",
     "aliases": ["malevolent hair", "malevolent"],
     "maxBgl": 0,
     "maxDl": 1,
-    "maxWl": 80
+    "maxWl": 50
   },
   {
     "name": "Eldritch Flame",
@@ -74,7 +74,7 @@
     "aliases": ["anime spikey hair", "spikey anime hair"],
     "maxBgl": 0,
     "maxDl": 1,
-    "maxWl": 80
+    "maxWl": 50
   },
   {
     "name": "Thanksgiving Dinner Fishing Rod",
