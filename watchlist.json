@@ -88,6 +88,13 @@
     "maxBgl": 0,
     "maxDl": 16,
     "maxWl": 0
+  },
+  {
+    "name": "Licorice Rod",
+    "aliases": ["licorice rod", "lico rod"],
+    "maxBgl": 0,
+    "maxDl": 5,
+    "maxWl": 0
   }
 ]
 
