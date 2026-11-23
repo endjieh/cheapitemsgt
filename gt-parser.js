@@ -16,6 +16,10 @@ function priceToWls(bgl = 0, dl = 0, wl = 0) {
 function cleanDiscordMessage(raw) {
   if (!raw) return '';
   let text = raw;
+  // Strip zero-width & invisible Unicode chars (Discord sering sisipkan ini)
+  text = text.replace(/[\u200B\u200C\u200D\u200E\u200F\uFEFF\u00AD\u034F\u061C\u2060-\u2064\u2066-\u206F]/g, '');
+  // Non-breaking space → spasi biasa
+  text = text.replace(/\u00A0/g, ' ');
   // HANYA ubah emoji yang benar-benar mewakili WL / DL / BGL
   text = text.replace(/<:([a-zA-Z0-9_]+):\d+>/gi, (m, name) => {
     const n = name.toUpperCase();
