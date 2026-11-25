@@ -107,7 +107,7 @@
     "name": "Ancestral Lens of Riches",
     "aliases": ["ancestral lens of riches", "ancestral lens", "ances merah", "ances red", "red ances"],
     "maxBgl": 0,
-    "maxDl": 9,
+    "maxDl": 8,
     "maxWl": 0
   },
   {
@@ -128,7 +128,14 @@
     "name": "Ancestral Orb of Time",
     "aliases": ["ancestral orb of time", "ancestral orb", "ances ungu", "ances purple", "purple ances"],
     "maxBgl": 0,
-    "maxDl": 9,
+    "maxDl": 8,
+    "maxWl": 0
+  },
+  {
+    "name": "Star Aura",
+    "aliases": ["star aura", "saura"],
+    "maxBgl": 0,
+    "maxDl": 1,
     "maxWl": 0
   }
 ]
