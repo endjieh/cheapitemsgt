@@ -95,6 +95,41 @@
     "maxBgl": 0,
     "maxDl": 5,
     "maxWl": 0
+  },
+  {
+    "name": "Winter Radiance Aura",
+    "aliases": ["winter radiance aura", "radiance winter aura", "winter aura radiance", "winter radiance", "radiance aura winter"],
+    "maxBgl": 0,
+    "maxDl": 14,
+    "maxWl": 0
+  },
+  {
+    "name": "Ancestral Lens of Riches",
+    "aliases": ["ancestral lens of riches", "ancestral lens", "ances merah", "ances red", "red ances"],
+    "maxBgl": 0,
+    "maxDl": 9,
+    "maxWl": 0
+  },
+  {
+    "name": "Ancestral Seed of Life",
+    "aliases": ["ancestral seed of life", "ancestral seed", "ances hijau", "ances green", "green ances"],
+    "maxBgl": 0,
+    "maxDl": 9,
+    "maxWl": 0
+  },
+  {
+    "name": "Ancestral Totem of Wisdom",
+    "aliases": ["ancestral totem of wisdom", "ancestral totem", "ances kuning", "ances yellow", "yellow ances"],
+    "maxBgl": 0,
+    "maxDl": 9,
+    "maxWl": 0
+  },
+  {
+    "name": "Ancestral Orb of Time",
+    "aliases": ["ancestral orb of time", "ancestral orb", "ances ungu", "ances purple", "purple ances"],
+    "maxBgl": 0,
+    "maxDl": 9,
+    "maxWl": 0
   }
 ]
 
