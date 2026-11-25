@@ -20,8 +20,8 @@ function cleanDiscordMessage(raw) {
   text = text.replace(/[\u200B\u200C\u200D\u200E\u200F\uFEFF\u00AD\u034F\u061C\u2060-\u2064\u2066-\u206F]/g, '');
   // Non-breaking space → spasi biasa
   text = text.replace(/\u00A0/g, ' ');
-  // HANYA ubah emoji yang benar-benar mewakili WL / DL / BGL
-  text = text.replace(/<:([a-zA-Z0-9_]+):\d+>/gi, (m, name) => {
+  // Handle static <:name:id> AND animated <a:name:id> emoji
+  text = text.replace(/<a?:([a-zA-Z0-9_]+):\d+>/gi, (m, name) => {
     const n = name.toUpperCase();
     if (n === 'BGL' || n === 'BLUEGEM' || n === 'BLUE_GEM') return ' BGL ';
     if (n === 'DL' || n === 'DIAMOND' || n === 'DIAMONDLOCK' || n === 'DIAMOND_LOCK') return ' DL ';
@@ -29,6 +29,8 @@ function cleanDiscordMessage(raw) {
     return ' ';
   });
   text = text.replace(/[*_~`]/g, '');
+  // Collapse multiple spaces
+  text = text.replace(/  +/g, ' ');
   return text;
 }
 

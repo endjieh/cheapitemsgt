@@ -24,8 +24,8 @@
     "name": "Cursed Katana",
     "aliases": ["cursed katana", "ckatana"],
     "maxBgl": 0,
-    "maxDl": 2,
-    "maxWl": 0
+    "maxDl": 1,
+    "maxWl": 50
   },
   {
     "name": "Black Aura",
